@@ -10,15 +10,26 @@ This repository contains the code accompanying our paper *"Skin-Mounted vs. Shoe
 ---
 
 ## ⚙️ Requirements
-- Python >= 3.8  
-- numpy  
-- pandas  
-- matplotlib  
-- spm1d  
-- statsmodels  
+This project was developed and tested with **Python 3.13**.  
+To replicate the environment used in our experiments, please export your current environment and share it as `requirements.txt` (for pip) or `environment.yml` (for conda).  
 
-Install the dependencies via:  
-`pip install -r requirements.txt`
+### Using pip
+```bash
+# Export current environment
+pip freeze > requirements.txt
+
+# Recreate environment
+pip install -r requirements.txt
+
+---
+
+### Using Conda
+
+# Export current environment
+conda env export --no-builds > environment.yml
+
+# Recreate environment
+conda env create -f environment.yml
 
 ---
 
