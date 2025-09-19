@@ -37,19 +37,36 @@ conda activate <env_name>
 ---
 
 ### ▶️ Run the main scripts
-Run preprocessing pipeline:  
-```bash
-python preprocess.py
-```  
-Run the statistical analysis:  
-```bash
-python analysis.py
-```  
 
-### Generate figures (optional):  
+#### Standing analysis
+Run ANCOVA:
 ```bash
-python plot_results.py
+python Standing.py --analysis ancova
 ```
+
+Run Panel3:
+```bash
+python Standing.py --analysis panel3
+```
+
+---
+
+#### Walking analysis
+Run paired t-tests:
+```bash
+python Walking.py --analysis paired
+```
+
+Run RM-ANOVA with post-hoc:
+```bash
+python Walking.py --analysis anova
+```
+
+Run gait condition means ± SD plots:
+```bash
+python Walking.py --analysis plot
+```
+
 
 
 ---

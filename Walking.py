@@ -5,12 +5,13 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import spm1d
+import argparse
 
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 
-ROOT_PATH       = "/Users/wangtingyu/Desktop/LMB/data/V3D_new_processing"
+ROOT_PATH       = "./data/V3D_new_processing"
 TARGET_FILENAME = "Gait_Right_All_Patterns_Full_Cycle.txt"
 SUBJECTS        = range(1, 16+1)   
 SKIPROWS        = 5
@@ -20,18 +21,14 @@ FIGSIZE_MSD = (8, 4)
 
 CONDITIONS = ["WOW-L-R_G", "WOW-L-nR_G", "WW-L-0_G"]
 
-# 分析哪些角度/轴
 ANGLES = ["FFHF", "HFSHK"]
 AXES   = ["Y"]
 
-# 是否把“每个 trial 当一条观测”喂给 anova1rm（推荐=True）
+
 USE_TRIAL_LEVEL_RM = True
 
 ALPHA = 0.05
-# ====================================================
 
-
-# ---------------- 工具函数（解析/清洗） ----------------
 def _last_seg(s: str) -> str:
     return re.split(r"[\\/]", s.strip())[-1]
 
@@ -73,7 +70,7 @@ def _mean_waveform(trials: List[List[float]]) -> np.ndarray:
     return np.nanmean(arr, axis=0)
 
 
-# ---------------- 读取：构建 data_dict ----------------
+
 def build_full_data_dict(root_path: str, target_filename: str, subjects) -> Dict:
     """
     data_dict[subject][condition][angle]['X'|'Y'|'Z'] -> List[List[float]]
@@ -106,7 +103,7 @@ def build_full_data_dict(root_path: str, target_filename: str, subjects) -> Dict
             condition  = conditions[col_idx]
             angle_type = angles[col_idx]
 
-            # 历史特殊修正（若需要）
+
             if folder == "S07" and condition.startswith("WW-A-0_S"):
                 condition = "WW-A-0_S"
 
@@ -127,37 +124,37 @@ def plot_gait_cond_mean_sd(
     angle_type,
     conditions,
     axis='Y',
-    # 文本内容
+
     title=None,
     xlabel='Gait cycle (%)',
     ylabel=None,
-    # 文本字号
+
     label_fs=12,
     tick_fs=10,
     title_fs=15,
     legend_fs=10,
-    # 图形外观
+
     figsize=(8, 4),
     fill_alpha=0.18,
     legend_ncol=1,
     legend_loc='best',
-    # 颜色 & 图例
+
     color_map=None,
     legend_labels=None,
 
     include_n=True,
-    # 线型/填充
+
     line_kw=None,
     fill_kw=None,
-    # ====== 新增：保存参数 ======
-    save_path: str | None = None,   # 例如 "/path/to/fig.tiff"
+
+    save_path: str | None = None,   # "/path/to/fig.tiff"
     save_dpi: int = 300
 ):
 
     line_kw = {} if line_kw is None else dict(line_kw)
     fill_kw = {} if fill_kw is None else dict(fill_kw)
 
-    # 自动识别目标长度 L
+
     L = None
     for subj in data_dict:
         for cond in conditions:
@@ -180,14 +177,14 @@ def plot_gait_cond_mean_sd(
 
     fig, ax = plt.subplots(figsize=figsize)
     for i, cond in enumerate(conditions):
-        # 颜色
+
         color = None
         if isinstance(color_map, dict):
             color = color_map.get(cond, None)
         elif isinstance(color_map, (list, tuple)) and len(color_map) > 0:
             color = color_map[i % len(color_map)]
 
-        # 被试内 trial 均值 → 跨被试统计
+
         subj_means = []
         for subj in sorted(data_dict.keys()):
             trials = data_dict.get(subj, {}).get(cond, {}).get(angle_type, {}).get(axis)
@@ -202,30 +199,29 @@ def plot_gait_cond_mean_sd(
         s = A.std(axis=0, ddof=1) if A.shape[0] > 1 else np.zeros(L)
         stats[cond] = {'mean': m, 'std': s, 'n_subj': A.shape[0], 'L': L}
 
-        # 图例文字
+
         base_label = legend_labels.get(cond, cond) if isinstance(legend_labels, dict) else cond
         label = f"{base_label} (n={A.shape[0]})" if include_n else base_label
 
         ax.plot(x_pct, m, label=label, color=color, **line_kw)
         ax.fill_between(x_pct, m - s, m + s, alpha=fill_alpha, color=color, **fill_kw)
 
-    # 标签/标题/图例
+
     ax.set_xlabel(xlabel, fontsize=label_fs)
     ax.set_ylabel(ylabel if ylabel is not None else f"{angle_type}-{axis}", fontsize=label_fs)
     ax.set_title(title or f"Mean ± SD | {angle_type}-{axis}", fontsize=title_fs)
     ax.tick_params(axis='both', labelsize=tick_fs)
     ax.legend(ncol=legend_ncol, loc=legend_loc, prop={'size': legend_fs})
 
-    # 横坐标拉满
+
     ax.set_xlim(x_pct[0], x_pct[-1])
     ax.margins(x=0)
     ax.autoscale(enable=True, axis='x', tight=True)
 
     plt.tight_layout()
 
-    # ====== 保存为 TIFF (dpi=save_dpi) ======
     if save_path:
-        # 自动补后缀 & 创建目录
+
         root, ext = os.path.splitext(save_path)
         if ext.lower() not in ('.tif', '.tiff'):
             save_path = root + '.tiff'
@@ -263,11 +259,11 @@ def build_rm_longform(
 
         subj_order.append(subj)
 
-        # 每条件 trial-mean（用于配对事后 t）
+
         for cond, trials in all_trials:
             cond_means_lists[cond].append(_mean_waveform(trials))
 
-        # 长表
+
         if use_trial_level:
             for g_idx, (cond, trials) in enumerate(all_trials):
                 for tr in trials:
@@ -312,11 +308,11 @@ def rm_anova_spm1d_compat(
 
     def _annotate_peak(ax, x, y, text, prefer_above=True):
         ymin, ymax = ax.get_ylim(); yspan = ymax - ymin
-        # 增加上下余量以避免重叠
+
         ax.set_ylim(ymin - 0.06*yspan, ymax + 0.18*yspan)
         ymin2, ymax2 = ax.get_ylim(); yspan2 = ymax2 - ymin2
         ytxt = y + (0.06*yspan2 if prefer_above else -0.06*yspan2)
-        # 夹紧到安全区
+
         ytxt = min(max(ytxt, ymin2 + 0.04*yspan2), ymax2 - 0.04*yspan2)
         va = "bottom" if ytxt >= y else "top"
         ax.annotate(text, xy=(x, y), xytext=(x, ytxt),
@@ -324,21 +320,21 @@ def rm_anova_spm1d_compat(
                     arrowprops=dict(arrowstyle="->", lw=1),
                     bbox=dict(boxstyle="round,pad=0.2", fc="white", alpha=0.85, ec="0.5"))
 
-    # 映射被试 → 整数
+
     subj_levels = np.unique(subjects)
     subj_map = {s:i for i,s in enumerate(subj_levels)}
     subj_idx = np.array([subj_map[s] for s in subjects], int)
 
-    # 统计与推断
+
     model = spm1d.stats.anova1rm(YL, group.astype(int), subj_idx)
     spmi  = model.inference(alpha=alpha)
 
-    # 出图
+
     fig, ax = plt.subplots(figsize=figsize)
     spmi.plot(ax=ax)
     spmi.plot_threshold_label(ax=ax)
 
-    # 轴格式
+
     n_time = YL.shape[1]
     tick_pos = np.linspace(0, n_time-1, 6)
     ax.set_xticks(tick_pos); ax.set_xticklabels([f"{p:.0f}" for p in np.linspace(0,100,6)])
@@ -348,7 +344,7 @@ def rm_anova_spm1d_compat(
     ax.set_title(title or f"SPM{{F}} RM-ANOVA (α={alpha})", fontsize=title_fs)
     ax.tick_params(axis='both', labelsize=tick_fs)
 
-    # 对每个显著簇做标注（F 统计量为单侧正向）
+
     z   = np.asarray(spmi.z).ravel()
     thr = float(getattr(spmi, 'zstar', np.nan))
     clusters = getattr(spmi, "clusters", [])
@@ -356,14 +352,14 @@ def rm_anova_spm1d_compat(
         for cl in clusters:
             i0, i1 = _int_endpoints(cl, z.size)
             seg = z[i0:i1]
-            # 取阈值以上的峰值位置；若阈值不可用/没找到，则退化为区间内最大值
+
             over = np.where(seg >= thr - 1e-12)[0] if np.isfinite(thr) else np.array([], int)
             j_rel = over[np.argmax(seg[over])] if over.size else int(np.argmax(seg))
             j     = i0 + j_rel
             zpk   = float(seg[j_rel])
             _annotate_peak(ax, j, zpk, f"F={zpk:.2f}\n{_format_p(cl.P)}", prefer_above=True)
     else:
-        # 无显著：标注全局最大 F 值并注明 n.s.
+
         j = int(np.argmax(z)); zpk = float(z[j])
         _annotate_peak(ax, j, zpk, f"F={zpk:.2f}\n(n.s.)", prefer_above=True)
 
@@ -374,17 +370,17 @@ def posthoc_pairwise_rm_means(
     cond_means, cond_list,
     alpha=0.05, two_tailed=True,
     plot=False, save_dir=None, angle=None, axis=None,
-    title_map=None,                   # 例：{('WOW-L-nR_G','WW-L-0_G'): '你的标题', ...}
-    figsize=(8, 4.6),                 # 和 Mean±SD 一致
+    title_map=None,                   
+    figsize=(8, 4.6),               
     xlabel='Stance phase (%)', ylabel='SPM{t}',
     title_fs=16, label_fs=14, tick_fs=12,
     save_dpi=300,
 ):
-    import os, numpy as np, matplotlib.pyplot as plt, spm1d
 
-    # ---------- helpers ----------
+
+
     def _format_p(p):
-        # 大写+斜体；<0.001 用门槛显示
+
         return r"$\mathit{P}$<0.001" if (p is not None and p < 0.001) else rf"$\mathit{{P}}$={p:.3f}"
 
     def _int_endpoints(cl, n_time):
@@ -394,7 +390,7 @@ def posthoc_pairwise_rm_means(
         return i0, i1
 
     def _annotate_peak(ax, x, y, text, prefer_above=True):
-        # 增加上下余量并夹紧，避免文本跑出画布
+
         ymin, ymax = ax.get_ylim(); yspan = ymax - ymin
         ax.set_ylim(ymin - 0.06*yspan, ymax + 0.18*yspan)
         ymin2, ymax2 = ax.get_ylim(); yspan2 = ymax2 - ymin2
@@ -417,27 +413,26 @@ def posthoc_pairwise_rm_means(
             ci, cj = cond_list[i], cond_list[j]
             Yi, Yj = cond_means[ci], cond_means[cj]   # (n_subj, n_time)
 
-            # 统计 + 推断
+
             t = spm1d.stats.ttest_paired(Yi, Yj)
             spmi = t.inference(alpha=alpha, two_tailed=two_tailed)
 
-            # 记录最小簇p（保持你的返回结构不变）
+ 
             minp = float(min([cl.P for cl in getattr(spmi, "clusters", [])], default=1.0))
             results.append((f"{cj} - {ci}", spmi, minp))
 
-            # —— 只在 plot=True 时出图并标注 —— #
+ 
             if plot:
                 fig, ax = plt.subplots(figsize=figsize)
                 spmi.plot(ax=ax)
                 spmi.plot_threshold_label(ax=ax)
 
-                # 轴：0–100%
+      
                 n_time = Yi.shape[1]
                 ax.set_xlim(0, n_time-1); ax.margins(x=0)
                 xt = np.linspace(0, n_time-1, 6)
                 ax.set_xticks(xt); ax.set_xticklabels([f"{p:.0f}" for p in np.linspace(0, 100, 6)])
 
-                # 标题（优先用映射）
                 ttl = None
                 if title_map:
                     ttl = title_map.get((ci, cj)) or title_map.get((cj, ci))
@@ -449,7 +444,7 @@ def posthoc_pairwise_rm_means(
                 ax.set_ylabel(ylabel, fontsize=label_fs)
                 ax.tick_params(axis='both', labelsize=tick_fs)
 
-                # —— 对每个显著簇做一次“阈值内真正峰值”的标注 —— #
+
                 z   = np.asarray(spmi.z).ravel()
                 thr = float(getattr(spmi, 'zstar', np.nan))
                 clusters = getattr(spmi, "clusters", [])
@@ -458,10 +453,10 @@ def posthoc_pairwise_rm_means(
                         i0, i1 = _int_endpoints(cl, z.size)
                         seg = z[i0:i1]
 
-                        # 判断簇整体符号（也可用 seg.sum() 的符号）
+                   
                         is_pos = (np.mean(seg) >= 0)
 
-                        # 在超过阈值的索引里找峰值（防止边界处出现无关小峰）
+              
                         eps = 1e-12
                         if is_pos:
                             idx = np.where(seg >=  thr - eps)[0]
@@ -474,7 +469,6 @@ def posthoc_pairwise_rm_means(
                         zpk   = float(seg[j_rel])
                         _annotate_peak(ax, j_glb, zpk, f"t={zpk:.2f}\n{_format_p(cl.P)}", prefer_above=(zpk>=0))
                 else:
-                    # 无显著簇：标注全局 |t| 最大处，并显示 n.s.
                     jg = int(np.argmax(np.abs(z))); zpk = float(z[jg])
                     _annotate_peak(ax, jg, zpk, f"t={zpk:.2f}\n(n.s.)", prefer_above=(zpk>=0))
 
@@ -490,9 +484,8 @@ def posthoc_pairwise_rm_means(
     return results
 
 
-# ---------------- 打印显著区段（F / t）含端点安全修复 ----------------
 def _int_endpoints(cl, n_time: int):
-    """把 cluster.endpoints 转成整数区间 [i0, i1) 并裁剪到 [0,n_time]。"""
+
     i0, i1 = cl.endpoints
     i0 = int(np.floor(i0))
     i1 = int(np.ceil(i1))
@@ -536,30 +529,30 @@ def ancova_spm1d_two_groups(
     data_dict,
     angle="HFSHK",
     axis="Y",
-    condA="WW-N-0_G",           # 组A（基准，编码为0）
-    condB="WOW-N-nR_G",         # 组B（编码为1）
-    cov_cond="B-0-0_G",         # 协变量条件（每被试取均值做标量协变量）
+    condA="WW-N-0_G",           
+    condB="WOW-N-nR_G",         
+    cov_cond="B-0-0_G",         
     alpha=0.05,
     save_dir="/Users/wangtingyu/Desktop/LMB/output/spm1d_ancova",
     title=None,
     figsize=(8,4),
     title_fs=13, label_fs=12, tick_fs=10,
     dpi=300,
-    direction="B-A"             # "B-A": t>0 表示 B>A；"A-B": t>0 表示 A>B
+    direction="B-A"           
 ):
     import os, numpy as np, matplotlib.pyplot as plt, spm1d
     os.makedirs(save_dir, exist_ok=True)
 
-    # —— 兼容 spm1d 不同 GLM API（类式/函数式） ——
+
     def _glm_contrast_inference(Y, X, c, alpha=0.05, two_tailed=True):
         glm_api = spm1d.stats.glm
-        if hasattr(glm_api, "OLS"):                 # 类式
+        if hasattr(glm_api, "OLS"):                 
             mdl = glm_api.OLS(Y, X)
             return mdl.contrast(c).inference(alpha=alpha, two_tailed=two_tailed)
-        else:                                       # 函数式
+        else:                                       
             return glm_api(Y, X, c).inference(alpha=alpha, two_tailed=two_tailed)
 
-    # —— 安全端点：将簇端点夹紧到 [0, n)；若无 endpoints，尝试 indices/I 退化处理 ——
+
     def _int_endpoints(cl, n):
         e = getattr(cl, "endpoints", None)
         if e is not None:
@@ -567,7 +560,7 @@ def ancova_spm1d_two_groups(
             i0 = max(0, min(i0, n-1))
             i1 = max(i0+1, min(int(i1), n))
             return i0, i1
-        # 回退：从索引集合恢复区间（右开）
+ 
         idx = getattr(cl, "indices", getattr(cl, "I", None))
         if idx is None:
             return 0, 0
@@ -580,15 +573,14 @@ def ancova_spm1d_two_groups(
         i1 = max(i0+1, min(i1, n))
         return i0, i1
 
-    # —— P 值格式：大写+斜体；P<0.001 时用阈值写法 ——
+
     def _fmt_P(p):
         return r"$P<0.001$" if (p is not None and p < 0.001) else rf"$P={p:.3f}$"
 
-    # —— 峰值标注（自动留白，避免顶到标题） ——
     def _annotate_peak(ax, x, y, text, prefer_above=True):
         ymin, ymax = ax.get_ylim()
         yspan = ymax - ymin
-        ax.set_ylim(ymin - 0.06*yspan, ymax + 0.18*yspan)  # 加上下留白
+        ax.set_ylim(ymin - 0.06*yspan, ymax + 0.18*yspan)  
         ymin2, ymax2 = ax.get_ylim()
         yspan2 = ymax2 - ymin2
         offset = 0.06 * yspan2
@@ -602,7 +594,6 @@ def ancova_spm1d_two_groups(
             bbox=dict(boxstyle="round,pad=0.2", fc="white", alpha=0.85, ec="0.5")
         )
 
-    # —— 聚合数据（仅保留三者都齐的被试） ——
     subjects_ok, Y_rows, G_vec, C_vec = [], [], [], []
     L = None
     for subj in sorted(data_dict.keys()):
@@ -630,13 +621,13 @@ def ancova_spm1d_two_groups(
     G = np.array(G_vec, float)         # 0/1
     C = np.array(C_vec, float); C -= C.mean()
 
-    # —— 交互检验：Y ~ 1 + G + C + G*C，检验 β(G*C)=0 ——
+
     X_int  = np.column_stack([np.ones(Y.shape[0]), G, C, G*C])
     c_int  = np.array([0, 0, 0, 1.0])
     ti_int = _glm_contrast_inference(Y, X_int, c_int, alpha=alpha, two_tailed=True)
     interaction_sig = (len(getattr(ti_int, "clusters", [])) > 0)
 
-    # —— ANCOVA 主效应：Y ~ 1 + G + C，检验 β(G)=0（方向可控） ——
+
     X  = np.column_stack([np.ones(Y.shape[0]), G, C])
     sign = +1.0 if direction.upper()=="B-A" else -1.0
     c   = np.array([0, sign, 0])       # t>0 表示 (B-A)>0 或 (A-B)>0
@@ -683,7 +674,6 @@ def ancova_spm1d_two_groups(
     fig.savefig(outp, dpi=dpi, format="tiff", bbox_inches="tight")
     plt.close(fig)
 
-    # —— 控制台信息 —— 
     print(f"[ANCOVA] subjects={len(subjects_ok)}  obs={Y.shape[0]}  L={L}")
     if interaction_sig:
         print("  ⚠️ 发现显著的组×协变量交互（同质斜率假设被破坏）→ 主效应需谨慎解释。")
@@ -691,7 +681,6 @@ def ancova_spm1d_two_groups(
         print("  ✅ 组×协变量交互不显著 → 满足同质斜率假设。")
     print(f"  saved: {outp}")
 
-    # ★ 新增：打印显著簇的明细（与 RM-ANOVA 一致的风格） ★
     z = np.asarray(getattr(ti, "z", []), dtype=float).ravel()
     cl_list = getattr(ti, "clusters", [])
     if cl_list:
@@ -707,10 +696,10 @@ def ancova_spm1d_two_groups(
     else:
         print(f"[clusters] {angle}-{axis} (ANCOVA): 无显著簇 (n.s.)")
 
-    # ★ 返回时带出推断对象（命名为 spmi 以便主程序可直接使用） ★
+
     return dict(
-        spmi=ti,                     # 推断后的 SPM 对象（含 .clusters / .zstar / .z）
-        spmi_interaction=ti_int,     # 交互项推断对象
+        spmi=ti,                     
+        spmi_interaction=ti_int,     
         interaction_sig=interaction_sig,
         subjects=subjects_ok,
         out_path=outp
@@ -725,24 +714,24 @@ if __name__ == "__main__":
     data_dict = build_full_data_dict(ROOT_PATH, TARGET_FILENAME, SUBJECTS)
    
 
-    # 2) ANCOVA 设置
-    ANGLES   = ["HFSHK", "FFHF"]     # 两条角度都跑
+
+    ANGLES   = ["HFSHK", "FFHF"]     
     AXIS     = "Y"
-    COND_A   = "WW-N-0_G"            # FM（基准）
+    COND_A   = "WW-N-0_G"            # FM
     COND_B   = "WOW-N-nR_G"          # SM
-    COV_COND = "B-0-0_G"             # 协变量（BF；trial-mean后再时间均值）
+    COV_COND = "B-0-0_G"             # covariate
     ALPHA    = 0.05
     SAVE_DIR = "/Users/wangtingyu/Desktop/LMB/output/spm1d_ancova"
     os.makedirs(SAVE_DIR, exist_ok=True)
 
-    # 可读名（只用于标题显示）
+
     pretty = {
         "WW-N-0_G":   "FM",
         "WOW-N-nR_G": "SM",
         "B-0-0_G":    "BF",
     }
 
-    # 3) 逐角度执行 ANCOVA（方向= B-A：t>0 表示 SM>FM）
+
     for angle in ANGLES:
         title_txt = f"Comparison of {angle} angles between {pretty.get(COND_A,'FM')} and {pretty.get(COND_B,'SM')} markers"
         out = ancova_spm1d_two_groups(
@@ -755,10 +744,10 @@ if __name__ == "__main__":
             alpha=ALPHA,
             save_dir=SAVE_DIR,
             title=title_txt,
-            figsize=(8, 4),         # 与 Mean±SD 图一致
+            figsize=(8, 4),         
             title_fs=15, label_fs=12, tick_fs=10,
             dpi=300,
-            direction="A-B"         # 关键：有符号对比，阴影与方向一致
+            direction="A-B"      
         )
         print(f"[saved] → {out['out_path']}")
 
@@ -767,8 +756,8 @@ def spm1d_paired_ttest_two_groups(
     data_dict,
     angle="HFSHK",
     axis="Y",
-    condA="WW-N-0_G",           # 组A（与 condB 成对）
-    condB="WOW-N-nR_G",         # 组B
+    condA="WW-N-0_G",          
+    condB="WOW-N-nR_G",         
     alpha=0.05,
     save_dir="/Users/wangtingyu/Desktop/LMB/output/spm1d_paired",
     title=None,
@@ -780,7 +769,7 @@ def spm1d_paired_ttest_two_groups(
     import os, numpy as np, matplotlib.pyplot as plt, spm1d
     os.makedirs(save_dir, exist_ok=True)
 
-    # —— 工具：安全端点、P 文本、峰值标注 —— #
+
     def _int_endpoints(cl, n):
         e = getattr(cl, "endpoints", None)
         if e is not None:
@@ -820,7 +809,7 @@ def spm1d_paired_ttest_two_groups(
             bbox=dict(boxstyle="round,pad=0.2", fc="white", alpha=0.85, ec="0.5")
         )
 
-    # —— 聚合（每被试两组 trial-mean 波形；只纳入两组都齐的被试） —— #
+
     subjects_ok, YA_list, YB_list = [], [], []
     L = None
     for subj in sorted(data_dict.keys()):
@@ -846,7 +835,7 @@ def spm1d_paired_ttest_two_groups(
     YA_mat = np.vstack(YA_list)   # (n_subj, L)
     YB_mat = np.vstack(YB_list)   # (n_subj, L)
 
-    # —— 配对 t 检验（方向：B-A 表示 t>0 即 B>A；A-B 则相反） —— #
+
     if direction.upper() == "B-A":
         ti = spm1d.stats.ttest_paired(YB_mat, YA_mat).inference(alpha=alpha, two_tailed=True)
         comp = f"{condB} vs {condA}"
@@ -854,7 +843,7 @@ def spm1d_paired_ttest_two_groups(
         ti = spm1d.stats.ttest_paired(YA_mat, YB_mat).inference(alpha=alpha, two_tailed=True)
         comp = f"{condA} vs {condB}"
 
-    # —— 作图 —— #
+
     fig, ax = plt.subplots(figsize=figsize)
     ti.plot(ax=ax)
     ti.plot_threshold_label(ax=ax)
@@ -893,23 +882,20 @@ def spm1d_paired_ttest_two_groups(
     fig.savefig(outp, dpi=dpi, format="tiff", bbox_inches="tight")
     plt.close(fig)
 
-    # —— 控制台信息 —— 
+  
     print(f"[Paired t] subjects={len(subjects_ok)}  L={L}")
     print(f"  saved: {outp}")
 
-    # —— 返回 —— #
     return dict(
         spmi=ti,
         subjects=subjects_ok,
         out_path=outp
     )
 
-'''
-if __name__ == "__main__":
- 
+
+def _main_paired_original():
     print("spm1d version:", getattr(spm1d, "__version__", "unknown"))
 
-    # 你的 data_dict 构建函数
     data_dict = build_full_data_dict(ROOT_PATH, TARGET_FILENAME, SUBJECTS)
 
     ANGLES   = ["HFSHK", "FFHF"]
@@ -941,35 +927,33 @@ if __name__ == "__main__":
         print(f"[saved] → {out['out_path']}")
 
 
-    
-
-if __name__ == "__main__":
+def _main_anova_original():
     print("spm1d version:", getattr(spm1d, "__version__", "unknown"))
 
-    # 1) 读取
+
     data_dict = build_full_data_dict(ROOT_PATH, TARGET_FILENAME, SUBJECTS)
 
-    # 2) SPM1D 设置
+
     CONDITIONS = ["WOW-L-R_G", "WOW-L-nR_G", "WW-L-0_G"]  # SM_R, SM, FM
     ANGLES     = ["HFSHK", "FFHF"]
     AXES       = ["Y"]
     ALPHA      = 0.05
     USE_TRIAL_LEVEL_RM = True
 
-    # 条件到可读名（用于标题）
+
     COND_LABEL = {
         "WOW-L-R_G":  "SMMs_R",
         "WOW-L-nR_G": "SMMs",
         "WW-L-0_G":   "FMMs",
     }
 
-    # 主效应标题
+
     RM_TITLE = {
         ("HFSHK","Y"): "Comparison of HFSHK angles between FMMs, SMMs, and SMMs_R",
         ("FFHF","Y"):  "Comparison of FFHF angles between FMMs, SMMs, and SMMs_R",
     }
 
-    # 输出与样式
+
     SAVE_DIR = "/Users/wangtingyu/Desktop/LMB/output/spm1d"
     os.makedirs(SAVE_DIR, exist_ok=True)
     TITLE_FONTSIZE = 15
@@ -983,20 +967,19 @@ if __name__ == "__main__":
         "ytick.labelsize": TICK_FONTSIZE,
     })
 
-    
     def _format_P(p):
         if p is None:
             return r"$\mathit{P}$=n/a"
         return r"$\mathit{P}$<0.001" if p < 0.001 else rf"$\mathit{{P}}$={p:.3f}"
 
     def _annotate_peak(ax, x, y, text, prefer_above=True):
-        # 边界保护：加上下余量再夹紧，避免顶到标题或边框
+  
         ymin, ymax = ax.get_ylim()
         yspan = ymax - ymin
         ax.set_ylim(ymin - 0.06*yspan, ymax + 0.18*yspan)
         ymin2, ymax2 = ax.get_ylim()
         yspan2 = ymax2 - ymin2
-        # 文本相对峰值的偏移
+ 
         ytxt = y + (0.06*yspan2 if prefer_above else -0.06*yspan2)
         ytxt = min(max(ytxt, ymin2 + 0.04*yspan2), ymax2 - 0.04*yspan2)
         va = "bottom" if ytxt >= y else "top"
@@ -1007,13 +990,12 @@ if __name__ == "__main__":
             bbox=dict(boxstyle="round,pad=0.2", fc="white", alpha=0.85, ec="0.5"),
         )
 
-    # 3) 主循环
+
     for angle in ANGLES:
         for axis in AXES:
             banner = f"ANOVA | {angle}-{axis} | groups={CONDITIONS}"
             print("\n" + "="*len(banner)); print(banner); print("="*len(banner))
 
-            # 3.1 trial 级长表 + 事后比较的“被试均值”
             try:
                 YL, group, subjects, subj_order, cond_means = build_rm_longform(
                     data_dict, angle=angle, axis=axis,
@@ -1027,7 +1009,6 @@ if __name__ == "__main__":
             if not USE_TRIAL_LEVEL_RM:
                 print("注意：使用每被试每条件的均值（近似残差）；建议 USE_TRIAL_LEVEL_RM=True 更稳健。")
 
-            # 3.2 主效应（F）：绘图 + 保存
             rm_title = RM_TITLE.get((angle, axis), f"SPM{{F}} RM-ANOVA | {angle}-{axis}")
             spmi_F, figF, axF = rm_anova_spm1d_compat(
                 YL, group, subjects, CONDITIONS, alpha=ALPHA,
@@ -1035,21 +1016,20 @@ if __name__ == "__main__":
                 xlabel="Stance phase (%)", ylabel="SPM{F}",
                 title_fs=TITLE_FONTSIZE, label_fs=AXIS_FONTSIZE, tick_fs=TICK_FONTSIZE
             )
-            # 注意：rm_anova_spm1d_compat 内部已负责“每个显著簇的峰值标注”，
-            # 这里不再重复标注，避免重复文字。
+
             outF = os.path.join(SAVE_DIR, f"RM_{angle}-{axis}.tiff")
             figF.savefig(outF, dpi=300, format="tiff", bbox_inches="tight")
             plt.close(figF)
             report_f_clusters(spmi_F, label=f"{angle}-{axis} (RM)")
 
-            # 3.3 事后比较（t）：逐张图，标题含“of ANGLE”，阈值内峰值标注 + 保存
+           
             results = posthoc_pairwise_rm_means(
                 cond_means, CONDITIONS, alpha=ALPHA, two_tailed=True,
                 plot=False, save_dir=None, angle=angle, axis=axis
             )
 
             for pair_name, spmij, minp in results:
-                # pair_name 形如 "CJ - CI"（带空格）；解析代码并映射友好名
+                
                 parts = re.split(r"\s-\s", pair_name.strip())
                 if len(parts) == 2:
                     cj_code, ci_code = parts[0].strip(), parts[1].strip()
@@ -1065,7 +1045,6 @@ if __name__ == "__main__":
                 spmij.plot(ax=axT)
                 spmij.plot_threshold_label(ax=axT)
 
-                
                 zt = np.asarray(spmij.z).ravel()
                 n_time_T = zt.size
                 axT.set_xlim(0, n_time_T - 1)
@@ -1078,7 +1057,6 @@ if __name__ == "__main__":
                 axT.set_ylabel("SPM{t}", fontsize=AXIS_FONTSIZE)
                 axT.set_title(nice_title)
 
-                
                 thr = float(getattr(spmij, 'zstar', np.nan))
                 clustersT = getattr(spmij, "clusters", [])
                 if clustersT:
@@ -1112,9 +1090,8 @@ if __name__ == "__main__":
 
             print(f"[done] {angle}-{axis} → 图像保存至：{SAVE_DIR}")
 
-'''
-if __name__ == "__main__":
 
+def _main_plot_original():
     data_dict = build_full_data_dict(ROOT_PATH, TARGET_FILENAME, SUBJECTS)
     colors = {
         "WOW-L-R_G":  "#2CA02C",  
@@ -1129,7 +1106,7 @@ if __name__ == "__main__":
 
     stats = plot_gait_cond_mean_sd(
         data_dict=data_dict,              
-        angle_type="HFSHK",               # 角度类型：如 "HFSHK" / "FFHF"
+        angle_type="HFSHK",               
         conditions=["WW-L-0_G", "WOW-L-nR_G","WOW-L-R_G"],  
         axis="Y",                         
         title="Angular change patterns of the HFSHK joint",
@@ -1146,3 +1123,20 @@ if __name__ == "__main__":
         save_path="/Users/wangtingyu/Desktop/LMB/output/Shoe_mounted/HFSHK_mean_LWI.tiff", 
         save_dpi=300                      
     )
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Walking analysis (dispatcher only, no logic changes)")
+    parser.add_argument("--analysis", choices=["paired", "anova", "plot"], required=True,
+                        help="Which original main to run: paired / anova / plot")
+    args = parser.parse_args()
+
+    if args.analysis == "paired":
+        _main_paired_original()
+    elif args.analysis == "anova":
+        _main_anova_original()
+    elif args.analysis == "plot":
+        _main_plot_original()
+
+if __name__ == "__main__":
+    main()
