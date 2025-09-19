@@ -1,50 +1,76 @@
-# Skin-Mounted vs. Shoe-Mounted Markers
-### Code for the paper:
-**Skin-Mounted vs. Shoe-Mounted Markers: Is There a Significant Difference in Measuring Multi-Segment Foot Kinematics with Lateral Wedge Insoles?**
+# Markerset
+
+Code for the paper:  
+Skin-Mounted vs. Shoe-Mounted Markers: Is There a Significant Difference in Measuring Multi-Segment Foot Kinematics with Lateral Wedge Insoles?  
+
+This repository contains code and analysis pipelines for a biomechanics research project, including preprocessing of motion capture data, multi-segment foot kinematic analysis, application of lateral wedge insoles, and statistical modeling (e.g., ANOVA, ANCOVA).  
 
 ---
 
-## 📖 Introduction
-This repository contains the code accompanying our paper *"Skin-Mounted vs. Shoe-Mounted Markers: Is There a Significant Difference in Measuring Multi-Segment Foot Kinematics with Lateral Wedge Insoles?"*.  
+## 🔧 Getting Started
 
----
-
-## ⚙️ Requirements
-This project was developed and tested with **Python 3.13**.  
-To replicate the environment used in our experiments, please export your current environment and share it as `requirements.txt` (for pip) or `environment.yml` (for conda).  
-
-### Using pip
+### 📥 Clone the repository
+Use SSH to clone this repository from GitHub:  
 ```bash
-# Export current environment
+git clone git@github.com:a-vegetable-chicken/Markerset.git
+cd Markerset
+```
+
+---
+
+### 📦 Set up the environment
+This project was developed and tested with **Python 3.13**.  
+
+#### Using pip
+```bash
 pip freeze > requirements.txt
-
-# Recreate environment
 pip install -r requirements.txt
+```
 
----
-
-### Using Conda
-
-# Export current environment
+#### Using conda
+```bash
 conda env export --no-builds > environment.yml
-
-# Recreate environment
 conda env create -f environment.yml
+conda activate <env_name>
+```
 
 ---
 
-## 🚀 Usage
-1. Clone the repository:  
-   `git clone git@github.com:a-vegetable-chicken/Markerset.git`  
-   `cd Markerset`  
+### ▶️ Run the main scripts
+Run preprocessing pipeline:  
+```bash
+python preprocess.py
+```  
+Run the statistical analysis:  
+```bash
+python analysis.py
+```  
 
-2. Run the preprocessing pipeline:  
-   `python preprocess.py`  
+### Generate figures (optional):  
+```bash
+python plot_results.py
+```
 
-3. Run the statistical analysis:  
-   `python analysis.py`  
-
-4. (Optional) Generate figures:  
-   `python plot_results.py`  
 
 ---
+
+## 📄 Citation
+If you use this code, please cite our paper:   
+```bibtex
+@article{your_bibtex_key,
+   title={Skin-Mounted vs. Shoe-Mounted Markers: Is There a Significant Difference in Measuring Multi-Segment Foot Kinematics with Lateral Wedge Insoles?},
+  author={Anonymous},
+  journal={Submitted to [Journal/Conference]},
+   year={2025}
+ }
+```
+
+---
+
+## 👥 Authors
+- Anonymous for double-blind review  
+
+---
+
+## 📄 License
+This code is released for academic and review purposes only.  
